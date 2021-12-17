@@ -4,6 +4,7 @@
 #define IMG_NUMBERS player.images[3]
 #define IMG_PLAYPAUS player.images[4]
 #define IMG_MONOSTER player.images[5]
+#define IMG_POSBAR player.images[6]
 
 #define BTN_NULL 0
 #define BTN_PREV 1
@@ -161,6 +162,33 @@ Bool CheckIfButtonIsHovered(I64 x, I64 y, I64 w, I64 h) {
       ms.pos.y <= player.windowTask->pix_top + y + h)
     return TRUE;
   return FALSE;
+}
+
+U0 DrawPlayerPositionBar(CDC *dc, I64 x, I64 y) {
+  if (!player.media.source_data || !player.media.source_len)
+    return;
+  CDC *posbar_dc = DCNew(28, 10);
+  GrBlot(posbar_dc, -250, 0, IMG_POSBAR);
+
+  // trough length : 248px
+  // bar length : 28px
+
+  // 220px
+
+  // calculate total_frames / 220
+  // calculate current_frame *
+
+  F64 i = (220.0 / ToF64(player.media.pcm_frames));
+
+  GrBlot(dc, x + (i * (player.media.seek_frame + Audio.output_frames[0])), y,
+         posbar_dc);
+  DCDel(posbar_dc);
+}
+
+U0 SeekTo(I64 frame) {
+  player.media.seek_frame = frame;
+  Audio.output_frames[0] = 0;
+  player.media.fifo_frame = 0;
 }
 
 U0 DrawPlayerControlsActive(CDC *dc, I64 x, I64 y) {
@@ -395,13 +423,16 @@ U0 PlayerTask() {
   I64 i;
   while (1) {
     i = 0;
-    while (player.media.fifo_frame < player.media.pcm_frames &&
-           i < BDL_BUF_SIZE) {
-      FifoI64Ins(Audio.output[0].data,
-                 (player.media.pcm_data)(U32 *)[player.media.fifo_frame]);
-      player.media.fifo_frame++;
-      i++;
-    }
+    if (FifoI64Cnt(Audio.output[0].data) < BDL_BUF_SIZE)
+      while (player.media.seek_frame + player.media.fifo_frame <
+                 player.media.pcm_frames &&
+             i < BDL_BUF_SIZE) {
+        FifoI64Ins(Audio.output[0].data,
+                   (player.media.pcm_data)(U32 *)[player.media.seek_frame +
+                                                  player.media.fifo_frame]);
+        player.media.fifo_frame++;
+        i++;
+      }
     if (FifoI64Cnt(Audio.output[0].data)) {
       if (player.media.pcm_data && !player.media.paused &&
           !player.media.stopped)
@@ -549,10 +580,11 @@ U0 DrawPlayer(CTask *, CDC *dc) {
     UpdatePlayerMarqueeTextPos;
     DrawPlayerMarqueeText(dc, 113, 29);
     DrawPlayerBitRateSampleRate(dc, 114, 45);
+    DrawPlayerMonoStereo(dc, 212, 43);
     DrawPlayerPlayPauseStopped(dc);
     DrawPlayerTimeElapsed(dc);
     DrawPlayerControlsActive(dc, 22, 91);
-    DrawPlayerMonoStereo(dc, 212, 43);
+    DrawPlayerPositionBar(dc, 21, 74);
   }
 }
 
@@ -577,6 +609,7 @@ U0 InitPlayer() {
   IMG_NUMBERS = PNGRead("T:/Images/NUMBERS.png");
   IMG_PLAYPAUS = PNGRead("T:/Images/PLAYPAUS.png");
   IMG_MONOSTER = PNGRead("T:/Images/MONOSTER.png");
+  IMG_POSBAR = PNGRead("T:/Images/POSBAR.png");
 
   DrawPlayerControlsIdle(IMG_MAIN, 19, 90);
   // the control buttons are 23x18
