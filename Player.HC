@@ -3,6 +3,7 @@
 #define IMG_TEXT player.images[2]
 #define IMG_NUMBERS player.images[3]
 #define IMG_PLAYPAUS player.images[4]
+#define IMG_MONOSTER player.images[5]
 
 #define BTN_NULL 0
 #define BTN_PREV 1
@@ -18,6 +19,10 @@
 #define SRC_TYPE_NULL 0
 #define SRC_TYPE_PCM 1
 #define SRC_TYPE_MP3 2
+
+I64 bitrates[16] = {0,   32,  40,  48,  56,  64,  80,  96,
+                    112, 128, 160, 192, 224, 256, 320, 0};
+I64 samplerates[4] = {44, 48, 32, 0};
 
 class @drmp3_config {
   U32 outputChannels;
@@ -42,8 +47,12 @@ class @media {
   U8 *source_data;
   I64 source_len;
   I64 source_type;
+  I64 source_bit_rate;
+  I64 source_sample_rate;
   U8 *pcm_data;
   I64 pcm_frames;
+  I64 fifo_frame;
+  I64 seek_frame;
   I64 runtime_mins;
   I64 runtime_secs;
   Bool paused;
@@ -111,6 +120,26 @@ U0 Draw5x6TextChar(CDC *dc, I64 x, I64 y, U8 ch) {
   if (put_char)
     GrBlot(dc, x, y, char_dc);
   DCDel(char_dc);
+}
+
+U0 Draw5x6Text(CDC *dc, I64 x, I64 y, U8 *str) {
+  while (*str) {
+    Draw5x6TextChar(dc, x, y, *str);
+    str++;
+    x += 5;
+  }
+}
+
+U0 DrawPlayerBitRateSampleRate(CDC *dc, I64 x, I64 y) {
+  if (!player.media.source_bit_rate || !player.media.source_sample_rate)
+    return;
+  U8 buf[16];
+  StrPrint(buf, "%03d", player.media.source_bit_rate);
+  if (buf[0] == '0')
+    buf[0] = ' ';
+  Draw5x6Text(dc, x, y, buf);
+  StrPrint(buf, "%02d", player.media.source_sample_rate);
+  Draw5x6Text(dc, x + 46, y, buf);
 }
 
 U0 DrawPlayerMarqueeText(CDC *dc, I64 x, I64 y) {
@@ -257,6 +286,31 @@ U0 DrawPlayerControlsIdle(CDC *dc, I64 x, I64 y) {
   DCDel(eject_dc);
 }
 
+U0 DrawPlayerMonoStereo(CDC *dc, I64 x, I64 y) {
+  CDC *mono_dc = DCNew(29, 12);
+  CDC *stereo_dc = DCNew(29, 12);
+  DCFill(mono_dc);
+  DCFill(stereo_dc);
+  switch (player.media.channels) {
+  case 1:
+    GrBlot(mono_dc, -29, 0, IMG_MONOSTER);
+    GrBlot(stereo_dc, 0, -12, IMG_MONOSTER);
+    break;
+  case 2:
+    GrBlot(mono_dc, -29, -12, IMG_MONOSTER);
+    GrBlot(stereo_dc, 0, 0, IMG_MONOSTER);
+    break;
+  default:
+    GrBlot(mono_dc, -29, -12, IMG_MONOSTER);
+    GrBlot(stereo_dc, 0, -12, IMG_MONOSTER);
+    break;
+  }
+  GrBlot(dc, x, y, mono_dc);
+  GrBlot(dc, x + 29, y, stereo_dc);
+  DCDel(mono_dc);
+  DCDel(stereo_dc);
+}
+
 U0 InsertMarqueeTextChar(U8 ch) {
   @marquee_char *pos = player.marquee.text;
   if (!player.marquee.text) {
@@ -291,7 +345,7 @@ U0 UpdatePlayerMarqueeTextPos() {
 
 @drmp3_config config;
 
-U0 DecodeMP3Stream() {
+U0 DecodeMP3Frames() {
   *GCC_FUN_ADDR(U64 *) = player.decoder_addr;
   config.outputChannels = 2;
   config.outputSampleRate = 48000;
@@ -338,12 +392,39 @@ U0 ParseID3(@id3v1 *tag) {
 }
 
 U0 PlayerTask() {
+  I64 i;
   while (1) {
+    i = 0;
+    while (player.media.fifo_frame < player.media.pcm_frames &&
+           i < BDL_BUF_SIZE) {
+      FifoI64Ins(Audio.output[0].data,
+                 (player.media.pcm_data)(U32 *)[player.media.fifo_frame]);
+      player.media.fifo_frame++;
+      i++;
+    }
     if (FifoI64Cnt(Audio.output[0].data)) {
       if (player.media.pcm_data && !player.media.paused &&
           !player.media.stopped)
         @ac97_process_audio;
     }
+    Sleep(1);
+  }
+}
+
+U0 GetMP3BitRateAndSampleRate() {
+  I64 i = 0;
+  while (i < player.media.source_len) {
+    if (player.media.source_data[i] == 0xFF &&
+        player.media.source_data[i + 1] & 0xE0)   // Frame Sync
+      if (player.media.source_data[i + 1] & 0x1A) // MPEG 1, Layer 3
+      {
+        player.media.source_bit_rate =
+            bitrates[player.media.source_data[i + 2] >> 4 & 0xF];
+        player.media.source_sample_rate =
+            samplerates[player.media.source_data[i + 2] >> 2 & 0x3];
+        return;
+      }
+    i++;
     Sleep(1);
   }
 }
@@ -370,7 +451,8 @@ U0 OpenAndPlayFile(U8 *filename) {
     WinFocus(player.windowTask);
     Sleep(100); // Give WinMgr some time to remove the PopUpPickFile window
     ParseID3(id3_buffer);
-    DecodeMP3Stream;
+    GetMP3BitRateAndSampleRate;
+    DecodeMP3Frames;
     CalculateMediaRunTime;
     break;
   default:
@@ -387,7 +469,9 @@ U0 OpenAndPlayFile(U8 *filename) {
   SetPlayerMarqueeText(marquee_buf);
 
   FifoI64Flush(Audio.output[0]);
-  @audio_play_sfx(player.media.pcm_data, player.media.pcm_frames);
+
+  player.media.fifo_frame = 0;
+  player.media.seek_frame = 0;
   Audio.output_frames[0] = 0;
 
   player.media.loading = FALSE;
@@ -408,10 +492,15 @@ U0 DrawPlayerTimeElapsed(CDC *dc) {
   U8 sec_buf[3];
   min_buf[2] = NULL;
   sec_buf[2] = NULL;
+
   StrPrint(min_buf, "%02d",
-           (Audio.output_frames[0] / player.media.sampleRate) / 60);
+           ((player.media.seek_frame + Audio.output_frames[0]) /
+            player.media.sampleRate) /
+               60);
   StrPrint(sec_buf, "%02d",
-           (Audio.output_frames[0] / player.media.sampleRate) % 60);
+           ((player.media.seek_frame + Audio.output_frames[0]) /
+            player.media.sampleRate) %
+               60);
 
   CDC *num_dc = DCNew(9, 13);
 
@@ -459,9 +548,11 @@ U0 DrawPlayer(CTask *, CDC *dc) {
     GrBlot(dc, 3, 2, IMG_MAIN);
     UpdatePlayerMarqueeTextPos;
     DrawPlayerMarqueeText(dc, 113, 29);
+    DrawPlayerBitRateSampleRate(dc, 114, 45);
     DrawPlayerPlayPauseStopped(dc);
     DrawPlayerTimeElapsed(dc);
     DrawPlayerControlsActive(dc, 22, 91);
+    DrawPlayerMonoStereo(dc, 212, 43);
   }
 }
 
@@ -485,6 +576,7 @@ U0 InitPlayer() {
   IMG_TEXT = PNGRead("T:/Images/TEXT.png");
   IMG_NUMBERS = PNGRead("T:/Images/NUMBERS.png");
   IMG_PLAYPAUS = PNGRead("T:/Images/PLAYPAUS.png");
+  IMG_MONOSTER = PNGRead("T:/Images/MONOSTER.png");
 
   DrawPlayerControlsIdle(IMG_MAIN, 19, 90);
   // the control buttons are 23x18
