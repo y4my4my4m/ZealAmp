@@ -1,5 +1,3 @@
-U8 *pcm_buffer_ptr = NULL;
-
 U64 find_u32_in_memory(U64 offset, U32 value) {
   I64 i = 0;
   while (MemCmp(offset + i, &value, 4))
@@ -76,7 +74,7 @@ U0 malloc() {
   PUSH_SYSV_REGS
   GET_SYSV_ARGS
   debug_print("called: malloc(%d)\n", p0);
-  pcm_buffer_ptr = @malloc(p0);
+  @malloc(p0);
   POP_SYSV_REGS
 }
 
@@ -148,6 +146,6 @@ U0 realloc() {
   PUSH_SYSV_REGS
   GET_SYSV_ARGS
   debug_print("called: realloc(0x%08x, %d)\n", p0, p1);
-  pcm_buffer_ptr = @realloc(p0, p1);
+  @realloc(p0, p1);
   POP_SYSV_REGS
 }

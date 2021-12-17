@@ -20,8 +20,8 @@
 #define SRC_TYPE_MP3 2
 
 class @drmp3_config {
-  U32 channels;
-  U32 sampleRate;
+  U32 outputChannels;
+  U32 outputSampleRate;
 };
 
 class @id3v1 {
@@ -293,8 +293,8 @@ U0 UpdatePlayerMarqueeTextPos() {
 
 U0 DecodeMP3Stream() {
   *GCC_FUN_ADDR(U64 *) = player.decoder_addr;
-  config.channels = 2;
-  config.sampleRate = 48000;
+  config.outputChannels = 2;
+  config.outputSampleRate = 48000;
   *HOLYC_ARG1(U64 *) = player.media.source_data;
   *HOLYC_ARG2(I32 *) = player.media.source_len;
   *HOLYC_ARG3(U64 *) = &config;
@@ -309,11 +309,12 @@ U0 DecodeMP3Stream() {
         MOV RAX, [GCC_FUN_ADDR]
         CLI
         CALL RAX
+        MOV [HOLYC_ARG1], RAX
         STI
   }
-  player.media.channels = config.channels;
-  player.media.sampleRate = config.sampleRate;
-  player.media.pcm_data = pcm_buffer_ptr;
+  player.media.channels = config.outputChannels;
+  player.media.sampleRate = config.outputSampleRate;
+  player.media.pcm_data = *HOLYC_ARG1(U64 *);
 }
 
 U0 CalculateMediaRunTime() {
