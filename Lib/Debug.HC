@@ -15,7 +15,7 @@ U0 debug_print(U8 *fmt, ...) {
     return;
   }
   U8 *buf = StrPrintJoin(NULL, fmt, argc, argv);
-  //"[%05d] %s", debug.counter, buf;
+  "[%05d] %s", debug.counter, buf;
   Free(buf);
   debug.counter++;
 }

@@ -32,7 +32,11 @@ class @id3v1 {
   U8 year[4];
 };
 
-class @media : @id3v1 {
+class @media {
+  U8 title[256];
+  U8 artist[256];
+  U8 album[256];
+  U8 year[16];
   U32 channels;
   U32 sampleRate;
   U8 *source_data;
@@ -44,6 +48,7 @@ class @media : @id3v1 {
   I64 runtime_secs;
   Bool paused;
   Bool stopped;
+  Bool loading;
 };
 
 class @marquee_char {
@@ -284,13 +289,12 @@ U0 UpdatePlayerMarqueeTextPos() {
   }
 }
 
+@drmp3_config config;
+
 U0 DecodeMP3Stream() {
   *GCC_FUN_ADDR(U64 *) = player.decoder_addr;
-
-  @drmp3_config config;
-  config.channels = 0;
-  config.sampleRate = 0;
-
+  config.channels = 2;
+  config.sampleRate = 48000;
   *HOLYC_ARG1(U64 *) = player.media.source_data;
   *HOLYC_ARG2(I32 *) = player.media.source_len;
   *HOLYC_ARG3(U64 *) = &config;
@@ -319,18 +323,17 @@ U0 CalculateMediaRunTime() {
       (player.media.pcm_frames / player.media.sampleRate) % 60;
 }
 
-U0 ParseID3() {
-  StrCpy(&player.media.title, "");
-  StrCpy(&player.media.artist, "");
-  StrCpy(&player.media.album, "");
-  StrCpy(&player.media.year, "");
-  @id3v1 *tag = player.media.source_data + player.media.source_len - 128;
+U0 ParseID3(@id3v1 *tag) {
+  MemSet(player.media.title, NULL, 64);
+  MemSet(player.media.artist, NULL, 64);
+  MemSet(player.media.album, NULL, 64);
+  MemSet(player.media.year, NULL, 16);
   if (MemCmp(tag->header, "TAG", 3))
     return;
-  StrCpy(&player.media.title, tag->title);
-  StrCpy(&player.media.artist, tag->artist);
-  StrCpy(&player.media.album, tag->album);
-  StrCpy(&player.media.year, tag->year);
+  MemCpy(player.media.title, tag->title, 20);
+  MemCpy(&player.media.artist, tag->artist, 30);
+  MemCpy(&player.media.album, tag->album, 30);
+  MemCpy(&player.media.year, tag->year, 4);
 }
 
 U0 PlayerTask() {
@@ -346,23 +349,32 @@ U0 PlayerTask() {
 
 U0 OpenAndPlayFile(U8 *filename) {
   if (!FileFind(filename)) {
-    PopUpOk("Error: File not found."); // FIXME - this will probably freeze,
-                                       // can't do PopUp in DrawIt task
+    PopUpOk("Error: File not found.");
     return;
   }
+
+  player.media.loading = TRUE;
   player.media.source_data = FileRead(filename, &player.media.source_len);
   player.media.source_type = SRC_TYPE_MP3;
 
+  // I shouldn't have to do this, but I get weird memory access/corruption
+  // issues if I pass the memory location to ParseID3() if one of the fields is
+  // over 20 characters... :/
+  U8 id3_buffer[128];
+  MemCpy(id3_buffer, player.media.source_data + player.media.source_len - 128,
+         128);
+
   switch (player.media.source_type) {
   case SRC_TYPE_MP3:
-    ParseID3;
+    WinFocus(player.windowTask);
+    Sleep(100); // Give WinMgr some time to remove the PopUpPickFile window
+    ParseID3(id3_buffer);
     DecodeMP3Stream;
     CalculateMediaRunTime;
     break;
   default:
-    PopUpOk(
-        "Error: Unsupported media type."); // FIXME - this will probably freeze,
-                                           // can't do PopUp in DrawIt task
+    PopUpOk("Error: Unsupported media type.");
+    player.media.loading = FALSE;
     return;
     break;
   }
@@ -377,18 +389,9 @@ U0 OpenAndPlayFile(U8 *filename) {
   @audio_play_sfx(player.media.pcm_data, player.media.pcm_frames);
   Audio.output_frames[0] = 0;
 
+  player.media.loading = FALSE;
   player.media.stopped = FALSE;
   player.media.paused = FALSE;
-}
-
-U0 UpdatePlayerActions() {
-  if (player.windowTask->dbg_task) { // Was a new track selected? If so, let's
-                                     // try to open it!
-    if (StrCmp(player.windowTask->dbg_task, "")) {
-      OpenAndPlayFile(player.windowTask->dbg_task);
-    }
-    player.windowTask->dbg_task = NULL;
-  }
 }
 
 U0 DrawPlayerTimeElapsed(CDC *dc) {
@@ -451,24 +454,19 @@ U0 DrawPlayerPlayPauseStopped(CDC *dc) {
 }
 
 U0 DrawPlayer(CTask *, CDC *dc) {
-  GrBlot(dc, 3, 2, IMG_MAIN);
-  UpdatePlayerActions;
-  UpdatePlayerMarqueeTextPos;
-  DrawPlayerMarqueeText(dc, 113, 29);
-  DrawPlayerPlayPauseStopped(dc);
-  DrawPlayerTimeElapsed(dc);
-  DrawPlayerControlsActive(dc, 22, 91);
+  if (!player.media.loading) {
+    GrBlot(dc, 3, 2, IMG_MAIN);
+    UpdatePlayerMarqueeTextPos;
+    DrawPlayerMarqueeText(dc, 113, 29);
+    DrawPlayerPlayPauseStopped(dc);
+    DrawPlayerTimeElapsed(dc);
+    DrawPlayerControlsActive(dc, 22, 91);
+  }
 }
 
 U0 InitPlayer() {
   MemSet(&player, sizeof(@player), NULL);
-  player.windowTask = User;
-  XTalkWait(
-      player.windowTask,
-      "DocClear; while (1) { switch(Fs->user_data) { case 1: "
-      "Fs->dbg_task = PopUpPickFile(\"T:/Music/\"); Fs->user_data = NULL; "
-      "break; default: break; };"
-      "Sleep(1); };\n");
+  player.windowTask = Fs;
   player.windowTask->win_width = 35;
   WinHorz((TEXT_COLS / 2) - (player.windowTask->win_width / 2),
           (TEXT_COLS / 2) - (player.windowTask->win_width / 2) +
@@ -479,7 +477,6 @@ U0 InitPlayer() {
           (TEXT_ROWS / 2) - (player.windowTask->win_height / 2) +
               (player.windowTask->win_height - 1),
           player.windowTask);
-  StrCpy(player.windowTask->task_title, "...TOSamp...");
 
   player.images = CAlloc(sizeof(CDC *) * 32);
   IMG_MAIN = PNGRead("T:/Images/MAIN.png");
@@ -500,4 +497,22 @@ U0 InitPlayer() {
   player.windowTask->draw_it = &DrawPlayer;
 
   Spawn(&PlayerTask, , "TOSamp Player Task", 1);
+
+  DocClear;
+  U8 *res = NULL;
+  while (1) {
+    StrCpy(player.windowTask->task_title, "...TOSamp...");
+    switch (Fs->user_data) {
+    case ACTION_PICK_FILE:
+      res = PopUpPickFile("T:/Music/");
+      Fs->user_data = NULL;
+      if (res)
+        if (StrCmp(res, ""))
+          OpenAndPlayFile(res);
+      break;
+    default:
+      break;
+    };
+    Sleep(1);
+  }
 }

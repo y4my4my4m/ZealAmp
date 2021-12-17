@@ -218,7 +218,7 @@ U0 process_elf_debug_symbols(Elf *elf) {
   Elf64_Sym *symtab = elf->symtab;
   entry_name = elf->strtab;
   entry_name += symtab->st_name;
-  while (i < 243) {
+  while (i < 253) {
     entry_bind = symtab->st_info >> 4;
     entry_type = symtab->st_info & 0xf;
     switch (entry_type) {
