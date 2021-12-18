@@ -217,4 +217,12 @@ I64 @ac97_init() {
   return 0;
 }
 
+U0 @ac97_task() {
+  while (1) {
+    @ac97_process_audio;
+    Sleep(1);
+  }
+}
+
 @ac97_init;
+Spawn(&@ac97_task, "AC97 Task", , 1);

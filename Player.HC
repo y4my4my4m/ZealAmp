@@ -437,7 +437,8 @@ U0 PlayerTask() {
   I64 i;
   while (1) {
     i = 0;
-    if (FifoI64Cnt(Audio.output[0].data) < BDL_BUF_SIZE)
+    if (FifoI64Cnt(Audio.output[0].data) < BDL_BUF_SIZE &&
+        player.media.pcm_data && !player.media.paused && !player.media.stopped)
       while (player.media.seek_frame + player.media.fifo_frame <
                  player.media.pcm_frames &&
              i < BDL_BUF_SIZE) {
@@ -447,11 +448,6 @@ U0 PlayerTask() {
         player.media.fifo_frame++;
         i++;
       }
-    if (FifoI64Cnt(Audio.output[0].data)) {
-      if (player.media.pcm_data && !player.media.paused &&
-          !player.media.stopped)
-        @ac97_process_audio;
-    }
     Sleep(1);
   }
 }
