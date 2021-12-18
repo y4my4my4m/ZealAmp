@@ -38,6 +38,13 @@ class @id3v1 {
   U8 year[4];
 };
 
+class @id3v2 {
+  U8 header[3];
+  U16 version;
+  U8 flags;
+  U32 size;
+};
+
 class @media {
   U8 title[256];
   U8 artist[256];
@@ -459,6 +466,12 @@ U0 PlayerTask() {
 
 U0 GetMP3BitRateAndSampleRate() {
   I64 i = 0;
+  @id3v2 *tag = player.media.source_data;
+  if (!MemCmp(player.media.source_data, "ID3", 3)) {
+    i += tag->size - 10;
+    if (tag->flags & 1 << 4)
+      i -= 10;
+  }
   while (i < player.media.source_len) {
     if (player.media.source_data[i] == 0xFF &&
         player.media.source_data[i + 1] & 0xE0)   // Frame Sync
