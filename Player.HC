@@ -83,6 +83,7 @@ class @player {
   I64 prev_lb_state;
   I64 prev_rb_state;
   U64 decoder_addr;
+  I64 audio_stream_id;
 };
 
 @player player;
@@ -174,8 +175,10 @@ U0 DrawPlayerPositionBar(CDC *dc, I64 x, I64 y) {
   if (!player.media.seeking) {
     GrBlot(posbar_dc, -250, 0, IMG_POSBAR);
     i = (220.0 / ToF64(player.media.pcm_frames));
-    GrBlot(dc, x + (i * (player.media.seek_frame + Audio.output_frames[0])), y,
-           posbar_dc);
+    GrBlot(dc,
+           x + (i * (player.media.seek_frame +
+                     Audio.output_frames[player.audio_stream_id])),
+           y, posbar_dc);
   }
   if (player.media.seeking) {
     GrBlot(posbar_dc, -278, 0, IMG_POSBAR);
@@ -188,7 +191,9 @@ U0 DrawPlayerPositionBar(CDC *dc, I64 x, I64 y) {
     GrBlot(dc, x + j, y, posbar_dc);
     i = (220.0 / ToF64(player.media.pcm_frames));
     player.media.seek_to_frame = 0;
-    while ((i * (player.media.seek_to_frame + Audio.output_frames[0]) < j))
+    while ((i * (player.media.seek_to_frame +
+                 Audio.output_frames[player.audio_stream_id]) <
+            j))
       player.media.seek_to_frame++;
   }
   DCDel(posbar_dc);
@@ -196,7 +201,7 @@ U0 DrawPlayerPositionBar(CDC *dc, I64 x, I64 y) {
 
 U0 SeekTo(I64 frame) {
   player.media.seek_frame = frame;
-  Audio.output_frames[0] = 0;
+  Audio.output_frames[player.audio_stream_id] = 0;
   player.media.fifo_frame = 0;
 }
 
@@ -437,12 +442,12 @@ U0 PlayerTask() {
   I64 i;
   while (1) {
     i = 0;
-    if (FifoI64Cnt(Audio.output[0].data) < BDL_BUF_SIZE &&
+    if (FifoI64Cnt(Audio.output[player.audio_stream_id].data) < BDL_BUF_SIZE &&
         player.media.pcm_data && !player.media.paused && !player.media.stopped)
       while (player.media.seek_frame + player.media.fifo_frame <
                  player.media.pcm_frames &&
              i < BDL_BUF_SIZE) {
-        FifoI64Ins(Audio.output[0].data,
+        FifoI64Ins(Audio.output[player.audio_stream_id].data,
                    (player.media.pcm_data)(U32 *)[player.media.seek_frame +
                                                   player.media.fifo_frame]);
         player.media.fifo_frame++;
@@ -509,11 +514,11 @@ U0 OpenAndPlayFile(U8 *filename) {
            player.media.runtime_secs);
   SetPlayerMarqueeText(marquee_buf);
 
-  FifoI64Flush(Audio.output[0]);
+  FifoI64Flush(Audio.output[player.audio_stream_id]);
 
   player.media.fifo_frame = 0;
   player.media.seek_frame = 0;
-  Audio.output_frames[0] = 0;
+  Audio.output_frames[player.audio_stream_id] = 0;
 
   player.media.loading = FALSE;
   player.media.stopped = FALSE;
@@ -534,14 +539,16 @@ U0 DrawPlayerTimeElapsed(CDC *dc) {
   min_buf[2] = NULL;
   sec_buf[2] = NULL;
 
-  StrPrint(min_buf, "%02d",
-           ((player.media.seek_frame + Audio.output_frames[0]) /
-            player.media.sampleRate) /
-               60);
-  StrPrint(sec_buf, "%02d",
-           ((player.media.seek_frame + Audio.output_frames[0]) /
-            player.media.sampleRate) %
-               60);
+  StrPrint(
+      min_buf, "%02d",
+      ((player.media.seek_frame + Audio.output_frames[player.audio_stream_id]) /
+       player.media.sampleRate) /
+          60);
+  StrPrint(
+      sec_buf, "%02d",
+      ((player.media.seek_frame + Audio.output_frames[player.audio_stream_id]) /
+       player.media.sampleRate) %
+          60);
 
   CDC *num_dc = DCNew(9, 13);
 
@@ -630,6 +637,7 @@ U0 InitPlayer() {
   player.media.stopped = TRUE;
   player.decoder_addr =
       get_symbol_address("drmp3_open_memory_and_read_pcm_frames_s16");
+  player.audio_stream_id = @audio_get_available_output_stream;
   player.windowTask->draw_it = &DrawPlayer;
 
   Spawn(&PlayerTask, , "TOSamp Player Task", 1);
