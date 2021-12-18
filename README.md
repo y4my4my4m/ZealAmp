@@ -19,3 +19,5 @@ Clone the repo, create a RedSea `ISO.C` image and add a `Music` folder, `#includ
 - Playlists and related settings (shuffle/random)
 
 - Visualizers
+
+- Support for .wsz Skin Packs
