@@ -427,7 +427,7 @@ U0 ParseID3(@id3v1 *tag) {
   MemSet(player.media.year, NULL, 16);
   if (MemCmp(tag->header, "TAG", 3))
     return;
-  MemCpy(player.media.title, tag->title, 20);
+  MemCpy(player.media.title, tag->title, 30);
   MemCpy(&player.media.artist, tag->artist, 30);
   MemCpy(&player.media.album, tag->album, 30);
   MemCpy(&player.media.year, tag->year, 4);
