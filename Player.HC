@@ -54,11 +54,13 @@ class @media {
   I64 pcm_frames;
   I64 fifo_frame;
   I64 seek_frame;
+  I64 seek_to_frame;
   I64 runtime_mins;
   I64 runtime_secs;
   Bool paused;
   Bool stopped;
   Bool loading;
+  Bool seeking;
 };
 
 class @marquee_char {
@@ -168,20 +170,27 @@ U0 DrawPlayerPositionBar(CDC *dc, I64 x, I64 y) {
   if (!player.media.source_data || !player.media.source_len)
     return;
   CDC *posbar_dc = DCNew(28, 10);
-  GrBlot(posbar_dc, -250, 0, IMG_POSBAR);
-
-  // trough length : 248px
-  // bar length : 28px
-
-  // 220px
-
-  // calculate total_frames / 220
-  // calculate current_frame *
-
-  F64 i = (220.0 / ToF64(player.media.pcm_frames));
-
-  GrBlot(dc, x + (i * (player.media.seek_frame + Audio.output_frames[0])), y,
-         posbar_dc);
+  F64 i;
+  if (!player.media.seeking) {
+    GrBlot(posbar_dc, -250, 0, IMG_POSBAR);
+    i = (220.0 / ToF64(player.media.pcm_frames));
+    GrBlot(dc, x + (i * (player.media.seek_frame + Audio.output_frames[0])), y,
+           posbar_dc);
+  }
+  if (player.media.seeking) {
+    GrBlot(posbar_dc, -278, 0, IMG_POSBAR);
+    I64 j = ms.pos.x - (player.windowTask->pix_left + x) - 14;
+    I64 k = 0;
+    if (j < 0)
+      j = 0;
+    if (j > 220)
+      j = 220;
+    GrBlot(dc, x + j, y, posbar_dc);
+    i = (220.0 / ToF64(player.media.pcm_frames));
+    player.media.seek_to_frame = 0;
+    while ((i * (player.media.seek_to_frame + Audio.output_frames[0]) < j))
+      player.media.seek_to_frame++;
+  }
   DCDel(posbar_dc);
 }
 
@@ -231,6 +240,9 @@ U0 DrawPlayerControlsActive(CDC *dc, I64 x, I64 y) {
       break;
     }
     player.pressing_button = BTN_NULL;
+    if (player.media.seeking && player.media.seek_to_frame)
+      SeekTo(player.media.seek_to_frame);
+    player.media.seeking = FALSE;
   }
 
   if (ms.lb && !player.prev_lb_state) {
@@ -246,6 +258,8 @@ U0 DrawPlayerControlsActive(CDC *dc, I64 x, I64 y) {
       player.pressing_button = BTN_NEXT;
     if (CheckIfButtonIsHovered(x + 121, y + 1, 22, 15))
       player.pressing_button = BTN_EJECT;
+    if (CheckIfButtonIsHovered(21, 74, 248, 10))
+      player.media.seeking = TRUE;
   }
 
   switch (player.pressing_button) {
