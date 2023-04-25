@@ -1,6 +1,6 @@
 U64 find_u32_in_memory(U64 offset, U32 value) {
   I64 i = 0;
-  while (MemCmp(offset + i, &value, 4))
+  while (MemCompare(offset + i, &value, 4))
     i++;
   return offset + i;
 }
@@ -82,7 +82,7 @@ U0 memcpy() {
   PUSH_SYSV_REGS
   GET_SYSV_ARGS
   debug_print("called: memcpy(0x%08x, 0x%08x, %d)\n", p0, p1, p2);
-  MemCpy(p0, p1, p2);
+  MemCopy(p0, p1, p2);
   POP_SYSV_REGS
 }
 
@@ -110,7 +110,7 @@ U8 *@memmove(U8 *dest, U8 *src, I64 n) {
       to[i] = from[i];
     return dest;
   }
-  MemCpy(dest, src, n);
+  MemCopy(dest, src, n);
   return dest;
 }
 
@@ -136,7 +136,7 @@ U8 *@realloc(U8 *ptr, I64 size) {
     new = MAlloc(size);
   } else {
     new = MAlloc(size);
-    MemCpy(new, ptr, size);
+    MemCopy(new, ptr, size);
     Free(ptr);
   }
   return new;

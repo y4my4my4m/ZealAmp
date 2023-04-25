@@ -1,8 +1,8 @@
-# TOSamp
+# ZealAmp
 
-MP3 player for TempleOS
+MP3 player for ZealOS
 
-![TOSamp](https://git.checksum.fail/alec/TOSamp/raw/branch/master/screenshot.png "TOSamp")
+![ZealAmp](screenshot.png "ZealAmp")
 
 # Requirements
 
@@ -10,7 +10,9 @@ MP3 player for TempleOS
 
 # Usage
 
-Clone the repo, create a RedSea `ISO.C` image and add a `Music` folder, `#include "Run";`
+1. Add a `Music` folder
+2. `#include "Run";`
+3. Select Music and press Esc
 
 # TODO
 
@@ -21,3 +23,7 @@ Clone the repo, create a RedSea `ISO.C` image and add a `Music` folder, `#includ
 - Visualizers
 
 - Support for .wsz Skin Packs
+
+# Disclaimer
+
+This is a port of Alec Murphy's TOSAmp for ZealOS.

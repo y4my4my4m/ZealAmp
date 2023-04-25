@@ -614,7 +614,7 @@ U0 DrawPlayer(CTask *, CDC *dc) {
     DrawPlayerPlayPauseStopped(dc);
     DrawPlayerTimeElapsed(dc);
     DrawPlayerControlsActive(dc, 22, 91);
-    DrawPlayerPositionBar(dc, 21, 74);
+    DrawPlayerPositionBar(dc, 21, 74);
   }
 }
 
@@ -645,7 +645,7 @@ U0 InitPlayer() {
   // the control buttons are 23x18
 
   SetPlayerMarqueeText(
-      "Welcome to TosAMP - MP3 Music Player for TempleOS *** ");
+      "Welcome to ZealAmp - MP3 Music Player for TempleOS *** ");
 
   player.media.stopped = TRUE;
   player.decoder_addr =
@@ -653,12 +653,12 @@ U0 InitPlayer() {
   player.audio_stream_id = AudioAvailableOutputStreamGet;
   player.windowTask->draw_it = &DrawPlayer;
 
-  Spawn(&PlayerTask, , "TOSamp Player Task", 1);
+  Spawn(&PlayerTask, , "ZealAmp Player Task", 1);
 
   DocClear;
   U8 *res = NULL;
   while (1) {
-    StrCopy(player.windowTask->task_title, "...TOSamp...");
+    StrCopy(player.windowTask->task_title, "...ZealAmp...");
     switch (Fs->user_data) {
     case ACTION_PICK_FILE:
       res = PopUpPickFile("Music/");

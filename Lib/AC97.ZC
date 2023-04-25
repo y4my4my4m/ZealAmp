@@ -147,7 +147,7 @@ U0 AC97OutputMix(U32 *buf, I64 length = NULL)
 U0 AC97BufferFill()
 {
 	I64 idx = InU8(ac97.nabm + PCM_OUTPUT_REG_BOX + LAST_VALID_ENTRY);
-	U32 *buf = ac97.bdl[PCM_OUT]->entries[idx].addr;
+	U32 *buf = ac97.bdl[PCM_OUT]->entries[idx].addr;
 	AC97OutputMix(buf, BDL_BUF_SIZE);
 	OutU8(ac97.nabm + PCM_OUTPUT_REG_BOX + LAST_VALID_ENTRY, ++idx);
 }
@@ -219,7 +219,7 @@ I64 AC97Init()
 	AC97BufferFill;
 
 	// Enable interrupt handler
-	//@pci_register_int_handler(&CAC97_int_handler);
+	//@pci_register_int_handler(&@ac97_int_handler);
 
 	// Start playing sound
 	OutU8(ac97.nabm + PCM_OUTPUT_REG_BOX + BUFFER_CNT, 1);
