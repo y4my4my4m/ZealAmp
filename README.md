@@ -16,6 +16,8 @@ MP3 player for ZealOS
 
 # TODO
 
+- Link to the actual Library/Drivers when https://github.com/Zeal-Operating-System/ZealOS/pull/88 gets merged
+
 - ID3v2 support
 
 - Playlists and related settings (shuffle/random)
@@ -27,3 +29,5 @@ MP3 player for ZealOS
 # Disclaimer
 
 This is a port of Alec Murphy's TOSAmp for ZealOS.
+
+Works best with 2GB ram +
