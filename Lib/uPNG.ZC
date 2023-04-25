@@ -992,7 +992,7 @@ I64 upng_decode(upng_t *upng) {
          (((((chunk) + 4)[2]) & 0xFF) << 8) | ((((chunk) + 4)[3]) & 0xFF)) ==
         (((('I') & 0xFF) << 24) | ((('D') & 0xFF) << 16) |
          ((('A') & 0xFF) << 8) | (('T') & 0xFF))) {
-      MemCpy(compressed + compressed_index, data, length);
+      MemCopy(compressed + compressed_index, data, length);
       compressed_index += length;
     } else if (((((((chunk) + 4)[0]) & 0xFF) << 24) |
                 (((((chunk) + 4)[1]) & 0xFF) << 16) |
@@ -1096,7 +1096,7 @@ upng_t *upng_new_from_file(U8 *filename) {
       (upng)->error_line = 1174;
     } while (0);
     return upng;
-  }
+  }
   upng_Free(upng);
   upng = upng_new_from_bytes(file, size);
   upng->source.owning = 1;

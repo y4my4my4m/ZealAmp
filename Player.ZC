@@ -166,10 +166,10 @@ U0 DrawPlayerMarqueeText(CDC *dc, I64 x, I64 y) {
 }
 
 Bool CheckIfButtonIsHovered(I64 x, I64 y, I64 w, I64 h) {
-  if (ms.pos.x >= player.windowTask->pix_left + x &&
-      ms.pos.x <= player.windowTask->pix_left + x + w &&
-      ms.pos.y >= player.windowTask->pix_top + y &&
-      ms.pos.y <= player.windowTask->pix_top + y + h)
+  if (mouse.pos.x >= player.windowTask->pix_left + x &&
+      mouse.pos.x <= player.windowTask->pix_left + x + w &&
+      mouse.pos.y >= player.windowTask->pix_top + y &&
+      mouse.pos.y <= player.windowTask->pix_top + y + h)
     return TRUE;
   return FALSE;
 }
@@ -189,7 +189,7 @@ U0 DrawPlayerPositionBar(CDC *dc, I64 x, I64 y) {
   }
   if (player.media.seeking) {
     GrBlot(posbar_dc, -278, 0, IMG_POSBAR);
-    I64 j = ms.pos.x - (player.windowTask->pix_left + x) - 14;
+    I64 j = mouse.pos.x - (player.windowTask->pix_left + x) - 14;
     I64 k = 0;
     if (j < 0)
       j = 0;
@@ -216,7 +216,7 @@ U0 DrawPlayerControlsActive(CDC *dc, I64 x, I64 y) {
 
   CDC *control_dc = DCNew(23, 18);
 
-  if (!ms.lb && player.prev_lb_state) {
+  if (!mouse.lb && player.prev_lb_state) {
     switch (player.pressing_button) {
     case BTN_PREV:
       if (CheckIfButtonIsHovered(x, y, 23, 18)) {
@@ -257,7 +257,7 @@ U0 DrawPlayerControlsActive(CDC *dc, I64 x, I64 y) {
     player.media.seeking = FALSE;
   }
 
-  if (ms.lb && !player.prev_lb_state) {
+  if (mouse.lb && !player.prev_lb_state) {
     if (CheckIfButtonIsHovered(x, y, 23, 18))
       player.pressing_button = BTN_PREV;
     if (CheckIfButtonIsHovered(x + (23 * 1), y, 23, 18))
@@ -323,8 +323,8 @@ U0 DrawPlayerControlsActive(CDC *dc, I64 x, I64 y) {
     break;
   }
 
-  player.prev_lb_state = ms.lb;
-  player.prev_rb_state = ms.rb;
+  player.prev_lb_state = mouse.lb;
+  player.prev_rb_state = mouse.rb;
 
   DCDel(control_dc);
 }
@@ -437,19 +437,19 @@ U0 ParseID3(@id3v1 *tag) {
   MemSet(player.media.artist, NULL, 64);
   MemSet(player.media.album, NULL, 64);
   MemSet(player.media.year, NULL, 16);
-  if (MemCmp(tag->header, "TAG", 3))
+  if (MemCompare(tag->header, "TAG", 3))
     return;
-  MemCpy(player.media.title, tag->title, 30);
-  MemCpy(&player.media.artist, tag->artist, 30);
-  MemCpy(&player.media.album, tag->album, 30);
-  MemCpy(&player.media.year, tag->year, 4);
+  MemCopy(player.media.title, tag->title, 30);
+  MemCopy(&player.media.artist, tag->artist, 30);
+  MemCopy(&player.media.album, tag->album, 30);
+  MemCopy(&player.media.year, tag->year, 4);
 }
 
 U0 PlayerTask() {
   I64 i;
   while (1) {
     i = 0;
-    if (FifoI64Cnt(Audio.output[player.audio_stream_id].data) < BDL_BUF_SIZE &&
+    if (FifoI64Count(Audio.output[player.audio_stream_id].data) < BDL_BUF_SIZE &&
         player.media.pcm_data && !player.media.paused && !player.media.stopped)
       while (player.media.seek_frame + player.media.fifo_frame <
                  player.media.pcm_frames &&
@@ -467,7 +467,7 @@ U0 PlayerTask() {
 U0 GetMP3BitRateAndSampleRate() {
   I64 i = 0;
   @id3v2 *tag = player.media.source_data;
-  if (!MemCmp(player.media.source_data, "ID3", 3)) {
+  if (!MemCompare(player.media.source_data, "ID3", 3)) {
     i += tag->size - 10;
     if (tag->flags & 1 << 4)
       i -= 10;
@@ -502,7 +502,7 @@ U0 OpenAndPlayFile(U8 *filename) {
   // issues if I pass the memory location to ParseID3() if one of the fields is
   // over 20 characters... :/
   U8 id3_buffer[128];
-  MemCpy(id3_buffer, player.media.source_data + player.media.source_len - 128,
+  MemCopy(id3_buffer, player.media.source_data + player.media.source_len - 128,
          128);
 
   switch (player.media.source_type) {
@@ -633,13 +633,13 @@ U0 InitPlayer() {
           player.windowTask);
 
   player.images = CAlloc(sizeof(CDC *) * 32);
-  IMG_MAIN = PNGRead("T:/Images/MAIN.png");
-  IMG_CBUTTONS = PNGRead("T:/Images/CBUTTONS.png");
-  IMG_TEXT = PNGRead("T:/Images/TEXT.png");
-  IMG_NUMBERS = PNGRead("T:/Images/NUMBERS.png");
-  IMG_PLAYPAUS = PNGRead("T:/Images/PLAYPAUS.png");
-  IMG_MONOSTER = PNGRead("T:/Images/MONOSTER.png");
-  IMG_POSBAR = PNGRead("T:/Images/POSBAR.png");
+  IMG_MAIN = PNGRead("Images/MAIN.png");
+  IMG_CBUTTONS = PNGRead("Images/CBUTTONS.png");
+  IMG_TEXT = PNGRead("Images/TEXT.png");
+  IMG_NUMBERS = PNGRead("Images/NUMBERS.png");
+  IMG_PLAYPAUS = PNGRead("Images/PLAYPAUS.png");
+  IMG_MONOSTER = PNGRead("Images/MONOSTER.png");
+  IMG_POSBAR = PNGRead("Images/POSBAR.png");
 
   DrawPlayerControlsIdle(IMG_MAIN, 19, 90);
   // the control buttons are 23x18
@@ -658,13 +658,13 @@ U0 InitPlayer() {
   DocClear;
   U8 *res = NULL;
   while (1) {
-    StrCpy(player.windowTask->task_title, "...TOSamp...");
+    StrCopy(player.windowTask->task_title, "...TOSamp...");
     switch (Fs->user_data) {
     case ACTION_PICK_FILE:
-      res = PopUpPickFile("T:/Music/");
+      res = PopUpPickFile("Music/");
       Fs->user_data = NULL;
       if (res)
-        if (StrCmp(res, ""))
+        if (StrCompare(res, ""))
           OpenAndPlayFile(res);
       break;
     default:

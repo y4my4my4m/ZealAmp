@@ -93,7 +93,7 @@ U0 @audio_init() {
 
 I64 @audio_get_available_output_stream() {
   I64 stream = 0;
-  while (FifoI64Cnt(Audio.output[stream].data))
+  while (FifoI64Count(Audio.output[stream].data))
     stream++;
   if (stream > AUDIO_MAX_STREAMS - 1)
     return -1;
@@ -126,8 +126,8 @@ U0 @ac97_mix_output(U32 *buf, I64 length = NULL) {
     acc_streams = 0;
 
     for (j = 0; j < AUDIO_MAX_STREAMS; j++) {
-      if (FifoI64Cnt(Audio.output[j].data)) {
-        FifoI64Rem(Audio.output[j].data, &sample);
+      if (FifoI64Count(Audio.output[j].data)) {
+        FifoI64Remove(Audio.output[j].data, &sample);
         Audio.output_frames[j]++;
         acc_streams++;
         acc_sample_L += sample.u16[0];
@@ -162,7 +162,7 @@ I64 @ac97_init() {
   j = PCIClassFind(0x040100, 0);
   if (j < 0) {
   device_not_found:
-    AdamLog("\n[AC'97] Device not found\n");
+    SysLog("\n[AC'97] Device not found\n");
     return -1;
   }
   @get_pci_info(j, &AC97.pci);

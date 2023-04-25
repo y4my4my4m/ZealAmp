@@ -1,6 +1,6 @@
 #define include_noreindex #include
 
-include_noreindex "Lib/Debug";
+include_noreindex "Lib/Debug";
 include_noreindex "Lib/Misc";
 
 include_noreindex "Lib/Pci";
