@@ -184,7 +184,7 @@ U0 DrawPlayerPositionBar(CDC *dc, I64 x, I64 y) {
     i = (220.0 / ToF64(player.media.pcm_frames));
     GrBlot(dc,
            x + (i * (player.media.seek_frame +
-                     Audio.output_frames[player.audio_stream_id])),
+                     audio.output_frames[player.audio_stream_id])),
            y, posbar_dc);
   }
   if (player.media.seeking) {
@@ -199,7 +199,7 @@ U0 DrawPlayerPositionBar(CDC *dc, I64 x, I64 y) {
     i = (220.0 / ToF64(player.media.pcm_frames));
     player.media.seek_to_frame = 0;
     while ((i * (player.media.seek_to_frame +
-                 Audio.output_frames[player.audio_stream_id]) <
+                 audio.output_frames[player.audio_stream_id]) <
             j))
       player.media.seek_to_frame++;
   }
@@ -208,7 +208,7 @@ U0 DrawPlayerPositionBar(CDC *dc, I64 x, I64 y) {
 
 U0 SeekTo(I64 frame) {
   player.media.seek_frame = frame;
-  Audio.output_frames[player.audio_stream_id] = 0;
+  audio.output_frames[player.audio_stream_id] = 0;
   player.media.fifo_frame = 0;
 }
 
@@ -449,12 +449,12 @@ U0 PlayerTask() {
   I64 i;
   while (1) {
     i = 0;
-    if (FifoI64Count(Audio.output[player.audio_stream_id].data) < BDL_BUF_SIZE &&
+    if (FifoI64Count(audio.output[player.audio_stream_id].data) < BDL_BUF_SIZE &&
         player.media.pcm_data && !player.media.paused && !player.media.stopped)
       while (player.media.seek_frame + player.media.fifo_frame <
                  player.media.pcm_frames &&
              i < BDL_BUF_SIZE) {
-        FifoI64Ins(Audio.output[player.audio_stream_id].data,
+        FifoI64Ins(audio.output[player.audio_stream_id].data,
                    (player.media.pcm_data)(U32 *)[player.media.seek_frame +
                                                   player.media.fifo_frame]);
         player.media.fifo_frame++;
@@ -527,11 +527,11 @@ U0 OpenAndPlayFile(U8 *filename) {
            player.media.runtime_secs);
   SetPlayerMarqueeText(marquee_buf);
 
-  FifoI64Flush(Audio.output[player.audio_stream_id]);
+  FifoI64Flush(audio.output[player.audio_stream_id]);
 
   player.media.fifo_frame = 0;
   player.media.seek_frame = 0;
-  Audio.output_frames[player.audio_stream_id] = 0;
+  audio.output_frames[player.audio_stream_id] = 0;
 
   player.media.loading = FALSE;
   player.media.stopped = FALSE;
@@ -554,12 +554,12 @@ U0 DrawPlayerTimeElapsed(CDC *dc) {
 
   StrPrint(
       min_buf, "%02d",
-      ((player.media.seek_frame + Audio.output_frames[player.audio_stream_id]) /
+      ((player.media.seek_frame + audio.output_frames[player.audio_stream_id]) /
        player.media.sampleRate) /
           60);
   StrPrint(
       sec_buf, "%02d",
-      ((player.media.seek_frame + Audio.output_frames[player.audio_stream_id]) /
+      ((player.media.seek_frame + audio.output_frames[player.audio_stream_id]) /
        player.media.sampleRate) %
           60);
 
@@ -645,23 +645,23 @@ U0 InitPlayer() {
   // the control buttons are 23x18
 
   SetPlayerMarqueeText(
-      "Welcome to TosAMP - MP3 Music Player for TempleOS *** ");
+      "Welcome to ZealAmp - MP3 Music Player for TempleOS *** ");
 
   player.media.stopped = TRUE;
   player.decoder_addr =
       get_symbol_address("drmp3_open_memory_and_read_pcm_frames_s16");
-  player.audio_stream_id = @audio_get_available_output_stream;
+  player.audio_stream_id = AudioAvailableOutputStreamGet;
   player.windowTask->draw_it = &DrawPlayer;
 
-  Spawn(&PlayerTask, , "TOSamp Player Task", 1);
+  Spawn(&PlayerTask, , "ZealAmp Player Task", 1);
 
   DocClear;
   U8 *res = NULL;
   while (1) {
-    StrCopy(player.windowTask->task_title, "...TOSamp...");
+    StrCopy(player.windowTask->task_title, "...ZealAmp...");
     switch (Fs->user_data) {
     case ACTION_PICK_FILE:
-      res = PopUpPickFile("Music/");
+      res = PopUpPickFile("Music/");
       Fs->user_data = NULL;
       if (res)
         if (StrCompare(res, ""))
