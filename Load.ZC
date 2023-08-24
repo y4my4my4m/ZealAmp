@@ -1,6 +1,6 @@
 #define include_noreindex #include
 
-include_noreindex "Lib/Debug";
+include_noreindex "Lib/Debug";
 include_noreindex "Lib/Misc";
 
 include_noreindex "Lib/Pci";
@@ -12,6 +12,8 @@ include_noreindex "Lib/ELF64";
 
 load_elf("dr_mp3");
 
+// include_noreindex "Lib/uPNG32";
+// include_noreindex "Player32";
 include_noreindex "Lib/uPNG";
 include_noreindex "Player";
 
